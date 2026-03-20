@@ -7,9 +7,9 @@ use std::path::PathBuf;
 /// Loaded from config file first, then environment variables as fallback.
 ///
 /// Config file locations (checked in order):
-///   1. <project_dir>/.claude/claude-rlm.toml   (project-level)
-///   2. ~/.config/claude-rlm/config.toml         (global, Linux/macOS)
-///      %APPDATA%\claude-rlm\config.toml         (global, Windows)
+///   1. <project_dir>/.claude/memory-rlm.toml   (project-level)
+///   2. ~/.config/memory-rlm/config.toml         (global, Linux/macOS)
+///      %APPDATA%\memory-rlm\config.toml         (global, Windows)
 ///   3. Environment variables (CONTEXTMEM_LLM_*)
 ///
 /// Config format:
@@ -120,7 +120,7 @@ impl LlmConfig {
         // For OpenAI-compat (Ollama), API key is optional
         if provider == Provider::Anthropic && api_key.is_none() {
             eprintln!(
-                "[claude-rlm] No LLM API key found. Set ANTHROPIC_API_KEY or run: claude-rlm config set api-key <key>"
+                "[memory-rlm] No LLM API key found. Set ANTHROPIC_API_KEY or run: memory-rlm config set api-key <key>"
             );
             return None;
         }
@@ -253,17 +253,17 @@ impl LlmConfig {
 
         if assessment.use_local {
             eprintln!(
-                "[claude-rlm] Auto: local inference ({:.1} tok/s)",
+                "[memory-rlm] Auto: local inference ({:.1} tok/s)",
                 assessment.tokens_per_second.unwrap_or(0.0)
             );
             match self.do_complete_local(system, user_message) {
                 Ok(result) => return Ok(result),
                 Err(e) => {
-                    eprintln!("[claude-rlm] Local inference failed, falling back to API: {}", e);
+                    eprintln!("[memory-rlm] Local inference failed, falling back to API: {}", e);
                 }
             }
         } else {
-            eprintln!("[claude-rlm] Auto: using API ({})", assessment.reason);
+            eprintln!("[memory-rlm] Auto: using API ({})", assessment.reason);
         }
 
         // Fallback to Anthropic
@@ -304,7 +304,7 @@ fn load_config_file() -> Option<FileConfig> {
             match toml::from_str(&contents) {
                 Ok(cfg) => return Some(cfg),
                 Err(e) => {
-                    eprintln!("[claude-rlm] Warning: failed to parse {}: {}", path.display(), e);
+                    eprintln!("[memory-rlm] Warning: failed to parse {}: {}", path.display(), e);
                 }
             }
         }
@@ -316,19 +316,19 @@ fn load_config_file() -> Option<FileConfig> {
 fn config_file_paths() -> Vec<PathBuf> {
     let mut paths = Vec::new();
 
-    // 1. Project-level: <cwd>/.claude/claude-rlm.toml
+    // 1. Project-level: <cwd>/.claude/memory-rlm.toml
     if let Ok(cwd) = std::env::current_dir() {
-        paths.push(cwd.join(".claude").join("claude-rlm.toml"));
+        paths.push(cwd.join(".claude").join("memory-rlm.toml"));
     }
 
     // 2. Global config
     if cfg!(windows) {
         if let Ok(appdata) = std::env::var("APPDATA") {
-            paths.push(PathBuf::from(appdata).join("claude-rlm").join("config.toml"));
+            paths.push(PathBuf::from(appdata).join("memory-rlm").join("config.toml"));
         }
     } else {
         if let Ok(home) = std::env::var("HOME") {
-            paths.push(PathBuf::from(home).join(".config").join("claude-rlm").join("config.toml"));
+            paths.push(PathBuf::from(home).join(".config").join("memory-rlm").join("config.toml"));
         }
     }
 
@@ -340,11 +340,11 @@ pub fn global_config_path() -> Option<PathBuf> {
     if cfg!(windows) {
         std::env::var("APPDATA")
             .ok()
-            .map(|d| PathBuf::from(d).join("claude-rlm").join("config.toml"))
+            .map(|d| PathBuf::from(d).join("memory-rlm").join("config.toml"))
     } else {
         std::env::var("HOME")
             .ok()
-            .map(|d| PathBuf::from(d).join(".config").join("claude-rlm").join("config.toml"))
+            .map(|d| PathBuf::from(d).join(".config").join("memory-rlm").join("config.toml"))
     }
 }
 

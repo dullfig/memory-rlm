@@ -111,7 +111,7 @@ pub fn init_gpu_device() -> Option<(wgpu::Device, wgpu::Queue, GpuInfo)> {
 /// Check cached assessment only (fast path for inference routing).
 ///
 /// Returns a "not assessed" result if no cache exists. The user must run
-/// `claude-rlm model benchmark` to populate the cache.
+/// `memory-rlm model benchmark` to populate the cache.
 pub fn assess_compute(speed_threshold: f64) -> ComputeAssessment {
     if let Some(cached) = load_cached_assessment() {
         // Re-evaluate threshold in case it changed
@@ -134,13 +134,13 @@ pub fn assess_compute(speed_threshold: f64) -> ComputeAssessment {
         gpu: detect_gpu(),
         tokens_per_second: None,
         use_local: false,
-        reason: "Not benchmarked. Run 'claude-rlm model benchmark' to assess.".to_string(),
+        reason: "Not benchmarked. Run 'memory-rlm model benchmark' to assess.".to_string(),
     }
 }
 
 /// Full assessment: detect GPU, benchmark local model, cache result.
 ///
-/// This is the slow path — used by the `claude-rlm model benchmark` CLI command.
+/// This is the slow path — used by the `memory-rlm model benchmark` CLI command.
 pub fn run_full_assessment(speed_threshold: f64) -> anyhow::Result<ComputeAssessment> {
     let gpu = detect_gpu();
 
@@ -179,31 +179,31 @@ pub fn auto_setup() -> bool {
     let gpu = match detect_gpu() {
         Some(g) => g,
         None => {
-            eprintln!("[claude-rlm] No GPU detected, skipping local inference setup");
+            eprintln!("[memory-rlm] No GPU detected, skipping local inference setup");
             return false;
         }
     };
 
     if gpu.device_type == "Cpu" {
-        eprintln!("[claude-rlm] Software GPU only, skipping local inference setup");
+        eprintln!("[memory-rlm] Software GPU only, skipping local inference setup");
         return false;
     }
 
     let vram_gb = gpu.max_buffer_size as f64 / (1024.0 * 1024.0 * 1024.0);
-    eprintln!("[claude-rlm] Auto-setup: {} ({}, {:.1} GB)", gpu.name, gpu.backend, vram_gb);
+    eprintln!("[memory-rlm] Auto-setup: {} ({}, {:.1} GB)", gpu.name, gpu.backend, vram_gb);
 
     let spec = crate::local_model::pick_model(vram_gb);
-    eprintln!("[claude-rlm] Auto-setup: selected model '{}'", spec.name);
+    eprintln!("[memory-rlm] Auto-setup: selected model '{}'", spec.name);
 
     let (model_path, tokenizer_path) = match crate::local_model::download_model(spec) {
         Ok(paths) => paths,
         Err(e) => {
-            eprintln!("[claude-rlm] Auto-setup: download failed: {}", e);
+            eprintln!("[memory-rlm] Auto-setup: download failed: {}", e);
             return false;
         }
     };
 
-    eprintln!("[claude-rlm] Auto-setup: benchmarking...");
+    eprintln!("[memory-rlm] Auto-setup: benchmarking...");
 
     match crate::local_model::benchmark_with_paths(&model_path, &tokenizer_path) {
         Ok(tps) => {
@@ -215,11 +215,11 @@ pub fn auto_setup() -> bool {
                 reason: format!("{:.1} tok/s (auto-setup)", tps),
             };
             save_assessment(&assessment);
-            eprintln!("[claude-rlm] Auto-setup complete: {:.1} tok/s", tps);
+            eprintln!("[memory-rlm] Auto-setup complete: {:.1} tok/s", tps);
             true
         }
         Err(e) => {
-            eprintln!("[claude-rlm] Auto-setup: benchmark failed: {}", e);
+            eprintln!("[memory-rlm] Auto-setup: benchmark failed: {}", e);
             false
         }
     }
@@ -238,11 +238,11 @@ fn cache_path() -> Option<PathBuf> {
     if cfg!(windows) {
         std::env::var("APPDATA")
             .ok()
-            .map(|d| PathBuf::from(d).join("claude-rlm").join("benchmark.json"))
+            .map(|d| PathBuf::from(d).join("memory-rlm").join("benchmark.json"))
     } else {
         std::env::var("HOME")
             .ok()
-            .map(|d| PathBuf::from(d).join(".config").join("claude-rlm").join("benchmark.json"))
+            .map(|d| PathBuf::from(d).join(".config").join("memory-rlm").join("benchmark.json"))
     }
 }
 

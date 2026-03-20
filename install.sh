@@ -3,15 +3,15 @@ set -euo pipefail
 
 # DEPRECATED: Use the Claude Code plugin instead:
 #   /plugin marketplace add dullfig/claude-plugins
-#   /plugin install claude-rlm
+#   /plugin install memory-rlm
 # This standalone installer will be removed in a future version.
 
 # ClaudeRLM installer for Linux and macOS
-# Usage: curl -fsSL https://raw.githubusercontent.com/dullfig/claude-rlm/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/dullfig/memory-rlm/main/install.sh | bash
 
-REPO="dullfig/claude-rlm"
+REPO="dullfig/memory-rlm"
 INSTALL_DIR="${HOME}/.local/bin"
-BINARY="claude-rlm"
+BINARY="memory-rlm"
 
 info()  { printf "\033[1;34m==>\033[0m %s\n" "$*"; }
 ok()    { printf "\033[1;32m==>\033[0m %s\n" "$*"; }
@@ -58,7 +58,7 @@ get_latest_version() {
 # Download pre-built binary
 download_binary() {
     local platform="$1" version="$2"
-    local url="https://github.com/${REPO}/releases/download/${version}/claude-rlm-${platform}.tar.gz"
+    local url="https://github.com/${REPO}/releases/download/${version}/memory-rlm-${platform}.tar.gz"
     local tmpdir
     tmpdir="$(mktemp -d)"
 
@@ -154,7 +154,7 @@ HOOKS_EOF
 
     if [ -f "$settings_file" ]; then
         # Check if hooks are already configured
-        if grep -q "claude-rlm" "$settings_file" 2>/dev/null; then
+        if grep -q "memory-rlm" "$settings_file" 2>/dev/null; then
             info "Hooks already configured in ${settings_file}"
             return
         fi
@@ -192,7 +192,7 @@ check_path() {
 
 # Sync plugin cache — copy installed binary into Claude Code's plugin cache
 sync_plugin_cache() {
-    local cache_base="${HOME}/.claude/plugins/cache/dullfig-plugins/claude-rlm"
+    local cache_base="${HOME}/.claude/plugins/cache/dullfig-plugins/memory-rlm"
     [ -d "$cache_base" ] || return 0
 
     local src="${INSTALL_DIR}/${BINARY}"

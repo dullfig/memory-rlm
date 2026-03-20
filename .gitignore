@@ -9,6 +9,6 @@
 /claude-plugins/
 
 # Plugin runtime binary (downloaded by bootstrap)
-/bin/claude-rlm
-/bin/claude-rlm.exe
+/bin/memory-rlm
+/bin/memory-rlm.exe
 /bin/.version

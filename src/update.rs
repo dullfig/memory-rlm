@@ -1,4 +1,4 @@
-//! Auto-update mechanism for claude-rlm.
+//! Auto-update mechanism for memory-rlm.
 //!
 //! Two-phase update: **check** → **apply** (immediate).
 //!
@@ -9,7 +9,7 @@
 
 use std::path::{Path, PathBuf};
 
-const REPO: &str = "dullfig/claude-rlm";
+const REPO: &str = "dullfig/memory-rlm";
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Contents extracted from a release archive.
@@ -127,7 +127,7 @@ async fn check_and_apply_update() -> anyhow::Result<()> {
     tracing::info!("Checking for updates...");
 
     let client = reqwest::Client::builder()
-        .user_agent(format!("claude-rlm/{}", CURRENT_VERSION))
+        .user_agent(format!("memory-rlm/{}", CURRENT_VERSION))
         .timeout(std::time::Duration::from_secs(15))
         .build()?;
 
@@ -161,9 +161,9 @@ async fn check_and_apply_update() -> anyhow::Result<()> {
     }
 
     let asset_name = if cfg!(windows) {
-        format!("claude-rlm-{}.zip", target)
+        format!("memory-rlm-{}.zip", target)
     } else {
-        format!("claude-rlm-{}.tar.gz", target)
+        format!("memory-rlm-{}.tar.gz", target)
     };
 
     let asset = release
@@ -315,7 +315,7 @@ fn apply_hooks_now(hooks_path: &Path, data: &[u8], plugin_root: &str) -> anyhow:
 
 /// Derive the plugin root directory from the exe path.
 ///
-/// Plugin layout: `{root}/bin/claude-rlm[.exe]`
+/// Plugin layout: `{root}/bin/memory-rlm[.exe]`
 /// So plugin root = exe's parent's parent.
 pub fn plugin_root_from_exe(exe: &Path) -> Option<PathBuf> {
     let bin_dir = exe.parent()?;
@@ -458,7 +458,7 @@ fn extract_archive_contents(data: &[u8]) -> anyhow::Result<ArchiveContents> {
         let mut file = archive.by_index(i)?;
         let name = file.name().to_string();
 
-        if name == "claude-rlm.exe" || name.ends_with("/claude-rlm.exe") {
+        if name == "memory-rlm.exe" || name.ends_with("/memory-rlm.exe") {
             let mut buf = Vec::new();
             file.read_to_end(&mut buf)?;
             binary = Some(buf);
@@ -470,7 +470,7 @@ fn extract_archive_contents(data: &[u8]) -> anyhow::Result<ArchiveContents> {
     }
 
     Ok(ArchiveContents {
-        binary: binary.ok_or_else(|| anyhow::anyhow!("claude-rlm.exe not found in zip archive"))?,
+        binary: binary.ok_or_else(|| anyhow::anyhow!("memory-rlm.exe not found in zip archive"))?,
         hooks_json,
     })
 }
@@ -491,7 +491,7 @@ fn extract_archive_contents(data: &[u8]) -> anyhow::Result<ArchiveContents> {
         let path = entry.path()?.to_path_buf();
         let path_str = path.to_string_lossy();
 
-        if path_str == "claude-rlm" || path_str.ends_with("/claude-rlm") {
+        if path_str == "memory-rlm" || path_str.ends_with("/memory-rlm") {
             let mut buf = Vec::new();
             entry.read_to_end(&mut buf)?;
             binary = Some(buf);
@@ -503,7 +503,7 @@ fn extract_archive_contents(data: &[u8]) -> anyhow::Result<ArchiveContents> {
     }
 
     Ok(ArchiveContents {
-        binary: binary.ok_or_else(|| anyhow::anyhow!("claude-rlm not found in tar.gz archive"))?,
+        binary: binary.ok_or_else(|| anyhow::anyhow!("memory-rlm not found in tar.gz archive"))?,
         hooks_json,
     })
 }
@@ -559,27 +559,27 @@ mod tests {
     #[test]
     fn test_plugin_root_from_exe() {
         // Windows-style path
-        let exe = Path::new("C:/Users/Dan/plugins/claude-rlm/0.2.0/bin/claude-rlm.exe");
+        let exe = Path::new("C:/Users/Dan/plugins/memory-rlm/0.2.0/bin/memory-rlm.exe");
         let root = plugin_root_from_exe(exe).unwrap();
-        assert_eq!(root, Path::new("C:/Users/Dan/plugins/claude-rlm/0.2.0"));
+        assert_eq!(root, Path::new("C:/Users/Dan/plugins/memory-rlm/0.2.0"));
 
         // Unix-style path
-        let exe = Path::new("/home/user/.claude/plugins/cache/claude-rlm/0.2.0/bin/claude-rlm");
+        let exe = Path::new("/home/user/.claude/plugins/cache/memory-rlm/0.2.0/bin/memory-rlm");
         let root = plugin_root_from_exe(exe).unwrap();
         assert_eq!(
             root,
-            Path::new("/home/user/.claude/plugins/cache/claude-rlm/0.2.0")
+            Path::new("/home/user/.claude/plugins/cache/memory-rlm/0.2.0")
         );
 
         // Not in a bin/ directory — should return None
-        let exe = Path::new("/usr/local/claude-rlm");
+        let exe = Path::new("/usr/local/memory-rlm");
         assert!(plugin_root_from_exe(exe).is_none());
     }
 
     #[test]
     fn test_hooks_json_resolution() {
-        let raw = r#"{"hooks":{"SessionStart":[{"hooks":[{"command":"${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm session-start"}]}]}}"#;
-        let resolved = raw.replace("${CLAUDE_PLUGIN_ROOT}", "/home/user/.claude/plugins/cache/claude-rlm/0.2.0");
+        let raw = r#"{"hooks":{"SessionStart":[{"hooks":[{"command":"${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm session-start"}]}]}}"#;
+        let resolved = raw.replace("${CLAUDE_PLUGIN_ROOT}", "/home/user/.claude/plugins/cache/memory-rlm/0.2.0");
 
         // Should still be valid JSON
         let parsed: serde_json::Value = serde_json::from_str(&resolved).unwrap();
@@ -587,7 +587,7 @@ mod tests {
             .as_str()
             .unwrap();
         assert!(cmd.starts_with("/home/user/"));
-        assert!(cmd.contains("claude-rlm session-start"));
+        assert!(cmd.contains("memory-rlm session-start"));
         assert!(!cmd.contains("${CLAUDE_PLUGIN_ROOT}"));
     }
 }

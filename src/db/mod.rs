@@ -16,11 +16,11 @@ pub struct Db {
 
 impl Db {
     /// Open (or create) the ClaudeRLM database at the given project directory.
-    /// Database lives at `<project_dir>/.claude/claude-rlm.db`.
+    /// Database lives at `<project_dir>/.claude/memory-rlm.db`.
     pub fn open(project_dir: &Path) -> Result<Self> {
         let db_dir = project_dir.join(".claude");
         std::fs::create_dir_all(&db_dir)?;
-        let db_path = db_dir.join("claude-rlm.db");
+        let db_path = db_dir.join("memory-rlm.db");
         let conn = Connection::open(&db_path)?;
 
         // Enable WAL mode for better concurrent access

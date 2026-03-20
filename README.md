@@ -34,7 +34,7 @@ Install as a Claude Code plugin for one-command setup with automatic binary mana
 
 ```
 /plugin marketplace add dullfig/claude-plugins
-/plugin install claude-rlm
+/plugin install memory-rlm
 ```
 
 The binary is downloaded automatically on first session start. No PATH configuration needed.
@@ -42,8 +42,8 @@ The binary is downloaded automatically on first session start. No PATH configura
 To update, delete the cached binary and restart:
 
 ```bash
-rm -f <plugin-dir>/bin/claude-rlm    # Unix
-del <plugin-dir>\bin\claude-rlm.exe  # Windows
+rm -f <plugin-dir>/bin/memory-rlm    # Unix
+del <plugin-dir>\bin\memory-rlm.exe  # Windows
 ```
 
 ### Manual install
@@ -52,70 +52,70 @@ If you prefer not to use the plugin system, standalone installers are still avai
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dullfig/claude-rlm/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dullfig/memory-rlm/main/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-irm https://raw.githubusercontent.com/dullfig/claude-rlm/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/dullfig/memory-rlm/main/install.ps1 | iex
 ```
 
 **From source (any platform with Rust):**
 ```bash
-cargo install --git https://github.com/dullfig/claude-rlm.git
+cargo install --git https://github.com/dullfig/memory-rlm.git
 ```
 
 If you install manually, you'll need to configure hooks yourself (see Manual hook setup below). Use **absolute paths** to the binary — Claude Code spawns hook subprocesses without inheriting your shell PATH.
 
 ### Migrating from manual install to plugin
 
-1. Install the plugin: `/plugin marketplace add dullfig/claude-plugins` then `/plugin install claude-rlm`
-2. Remove old hooks from `~/.claude/settings.json` (any entries referencing `claude-rlm`)
-3. Optionally remove the old binary from `~/.local/bin/claude-rlm` or `%LOCALAPPDATA%\Programs\claude-rlm\`
+1. Install the plugin: `/plugin marketplace add dullfig/claude-plugins` then `/plugin install memory-rlm`
+2. Remove old hooks from `~/.claude/settings.json` (any entries referencing `memory-rlm`)
+3. Optionally remove the old binary from `~/.local/bin/memory-rlm` or `%LOCALAPPDATA%\Programs\memory-rlm\`
 
-Your existing database (`.claude/claude-rlm.db`) is preserved — all your indexed memory carries over.
+Your existing database (`.claude/memory-rlm.db`) is preserved — all your indexed memory carries over.
 
 ## Manual hook setup
 
 If you installed manually, copy `hooks.example.json` into your project's `.claude/settings.json` (or merge into your existing settings).
 
-**Important:** Use the absolute path to `claude-rlm` in hook commands. Replace `/path/to/claude-rlm` with the actual install location (e.g., `~/.local/bin/claude-rlm` on Linux/macOS, `C:/Users/YOU/AppData/Local/Programs/claude-rlm/claude-rlm.exe` on Windows):
+**Important:** Use the absolute path to `memory-rlm` in hook commands. Replace `/path/to/memory-rlm` with the actual install location (e.g., `~/.local/bin/memory-rlm` on Linux/macOS, `C:/Users/YOU/AppData/Local/Programs/memory-rlm/memory-rlm.exe` on Windows):
 
 ```json
 {
   "hooks": {
     "UserPromptSubmit": [
       {
-        "hooks": [{ "type": "command", "command": "/path/to/claude-rlm index-prompt", "timeout": 5 }]
+        "hooks": [{ "type": "command", "command": "/path/to/memory-rlm index-prompt", "timeout": 5 }]
       }
     ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": "/path/to/claude-rlm index-edit", "timeout": 5 }]
+        "hooks": [{ "type": "command", "command": "/path/to/memory-rlm index-edit", "timeout": 5 }]
       },
       {
         "matcher": "Read",
-        "hooks": [{ "type": "command", "command": "/path/to/claude-rlm index-read", "timeout": 2 }]
+        "hooks": [{ "type": "command", "command": "/path/to/memory-rlm index-read", "timeout": 2 }]
       },
       {
         "matcher": "Bash",
-        "hooks": [{ "type": "command", "command": "/path/to/claude-rlm index-bash", "timeout": 2 }]
+        "hooks": [{ "type": "command", "command": "/path/to/memory-rlm index-bash", "timeout": 2 }]
       }
     ],
     "PreCompact": [
       {
-        "hooks": [{ "type": "command", "command": "/path/to/claude-rlm pre-compact", "timeout": 10 }]
+        "hooks": [{ "type": "command", "command": "/path/to/memory-rlm pre-compact", "timeout": 10 }]
       }
     ],
     "SessionStart": [
       {
-        "hooks": [{ "type": "command", "command": "/path/to/claude-rlm session-start", "timeout": 10 }]
+        "hooks": [{ "type": "command", "command": "/path/to/memory-rlm session-start", "timeout": 10 }]
       }
     ],
     "SessionEnd": [
       {
-        "hooks": [{ "type": "command", "command": "/path/to/claude-rlm session-end", "timeout": 30 }]
+        "hooks": [{ "type": "command", "command": "/path/to/memory-rlm session-end", "timeout": 30 }]
       }
     ]
   }
@@ -129,8 +129,8 @@ Add to your Claude Code MCP settings for explicit search tools:
 ```json
 {
   "mcpServers": {
-    "claude-rlm": {
-      "command": "claude-rlm",
+    "memory-rlm": {
+      "command": "memory-rlm",
       "args": ["serve"]
     }
   }
@@ -143,14 +143,14 @@ Plugin users get this automatically via the plugin's `.mcp.json`.
 
 For higher-quality knowledge extraction at session end, add your API key to a config file.
 
-**Project-level** (`.claude/claude-rlm.toml` in your project):
+**Project-level** (`.claude/memory-rlm.toml` in your project):
 ```toml
 [llm]
 provider = "anthropic"
 api_key = "sk-ant-..."
 ```
 
-**Global** (`~/.config/claude-rlm/config.toml` on Linux/macOS, `%APPDATA%\claude-rlm\config.toml` on Windows):
+**Global** (`~/.config/memory-rlm/config.toml` on Linux/macOS, `%APPDATA%\memory-rlm\config.toml` on Windows):
 ```toml
 [llm]
 provider = "anthropic"
@@ -198,33 +198,33 @@ Without any LLM configured, ClaudeRLM falls back to heuristic pattern matching f
 If something goes wrong and ClaudeRLM is interfering with your session, disable it from any terminal:
 
 ```bash
-claude-rlm disable        # All hooks silently exit, Claude Code works normally
-claude-rlm enable         # Re-enable hooks
-claude-rlm status         # Shows DISABLED/enabled state
+memory-rlm disable        # All hooks silently exit, Claude Code works normally
+memory-rlm enable         # Re-enable hooks
+memory-rlm status         # Shows DISABLED/enabled state
 ```
 
-This creates/removes a `~/.claude-rlm-disabled` flag file. No Claude session needed -- just open a terminal and type the command.
+This creates/removes a `~/.memory-rlm-disabled` flag file. No Claude session needed -- just open a terminal and type the command.
 
 ## CLI commands
 
 ```
-claude-rlm serve          # Start MCP server (default)
-claude-rlm status         # Show index statistics
-claude-rlm --version      # Show version
-claude-rlm disable        # Disable all hooks (emergency kill switch)
-claude-rlm enable         # Re-enable hooks
-claude-rlm index-prompt   # Hook: index user prompt (stdin)
-claude-rlm index-edit     # Hook: index code edit (stdin)
-claude-rlm index-read     # Hook: index file read (stdin)
-claude-rlm index-bash     # Hook: index bash command (stdin)
-claude-rlm pre-compact    # Hook: pre-compaction checkpoint
-claude-rlm session-start  # Hook: inject context
-claude-rlm session-end    # Hook: distill + summarize
+memory-rlm serve          # Start MCP server (default)
+memory-rlm status         # Show index statistics
+memory-rlm --version      # Show version
+memory-rlm disable        # Disable all hooks (emergency kill switch)
+memory-rlm enable         # Re-enable hooks
+memory-rlm index-prompt   # Hook: index user prompt (stdin)
+memory-rlm index-edit     # Hook: index code edit (stdin)
+memory-rlm index-read     # Hook: index file read (stdin)
+memory-rlm index-bash     # Hook: index bash command (stdin)
+memory-rlm pre-compact    # Hook: pre-compaction checkpoint
+memory-rlm session-start  # Hook: inject context
+memory-rlm session-end    # Hook: distill + summarize
 ```
 
 ## Data storage
 
-All data is stored locally in `.claude/claude-rlm.db` (SQLite) inside your project directory. Nothing leaves your machine unless you configure LLM distillation with a cloud API.
+All data is stored locally in `.claude/memory-rlm.db` (SQLite) inside your project directory. Nothing leaves your machine unless you configure LLM distillation with a cloud API.
 
 ## Supported languages (tree-sitter)
 

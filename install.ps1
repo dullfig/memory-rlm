@@ -1,16 +1,16 @@
 # DEPRECATED: Use the Claude Code plugin instead:
 #   /plugin marketplace add dullfig/claude-plugins
-#   /plugin install claude-rlm
+#   /plugin install memory-rlm
 # This standalone installer will be removed in a future version.
 
 # ClaudeRLM installer for Windows
-# Usage: irm https://raw.githubusercontent.com/dullfig/claude-rlm/main/install.ps1 | iex
+# Usage: irm https://raw.githubusercontent.com/dullfig/memory-rlm/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
 
-$Repo = "dullfig/claude-rlm"
-$Binary = "claude-rlm.exe"
-$InstallDir = "$env:LOCALAPPDATA\Programs\claude-rlm"
+$Repo = "dullfig/memory-rlm"
+$Binary = "memory-rlm.exe"
+$InstallDir = "$env:LOCALAPPDATA\Programs\memory-rlm"
 
 function Write-Info($msg)  { Write-Host "==> $msg" -ForegroundColor Blue }
 function Write-Ok($msg)    { Write-Host "==> $msg" -ForegroundColor Green }
@@ -31,11 +31,11 @@ function Install-Binary {
     param([string]$Version)
 
     $target = "x86_64-pc-windows-msvc"
-    $url = "https://github.com/$Repo/releases/download/$Version/claude-rlm-$target.zip"
-    $tmpDir = Join-Path $env:TEMP "claude-rlm-install"
-    $zipPath = Join-Path $tmpDir "claude-rlm.zip"
+    $url = "https://github.com/$Repo/releases/download/$Version/memory-rlm-$target.zip"
+    $tmpDir = Join-Path $env:TEMP "memory-rlm-install"
+    $zipPath = Join-Path $tmpDir "memory-rlm.zip"
 
-    Write-Info "Downloading claude-rlm $Version for Windows..."
+    Write-Info "Downloading memory-rlm $Version for Windows..."
 
     New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
     Invoke-WebRequest -Uri $url -OutFile $zipPath -UseBasicParsing
@@ -78,7 +78,7 @@ function Add-ToPath {
     $driveLetter = $bashPath.Substring(0, 1).ToLower()
     $bashPath = "/$driveLetter$($bashPath.Substring(2))"
     $exportLine = "export PATH=`"$bashPath:`$PATH`""
-    if ((Test-Path $bashrc) -and (Get-Content $bashrc -Raw) -match [regex]::Escape("claude-rlm")) {
+    if ((Test-Path $bashrc) -and (Get-Content $bashrc -Raw) -match [regex]::Escape("memory-rlm")) {
         # Already in .bashrc
     } else {
         Write-Info "Adding $InstallDir to ~/.bashrc for Git Bash..."
@@ -101,7 +101,7 @@ function Configure-Hooks {
     Write-Info "Configuring Claude Code hooks..."
 
     # Use absolute path — Claude Code's hook subprocess doesn't inherit the user's shell PATH
-    $exe = "$InstallDir\claude-rlm.exe" -replace '\\', '/'
+    $exe = "$InstallDir\memory-rlm.exe" -replace '\\', '/'
 
     $hooks = @{
         hooks = @{
@@ -127,7 +127,7 @@ function Configure-Hooks {
 
     if (Test-Path $settingsFile) {
         $content = Get-Content $settingsFile -Raw
-        if ($content -match "claude-rlm") {
+        if ($content -match "memory-rlm") {
             Write-Info "Hooks already configured in $settingsFile"
             return
         }
@@ -154,7 +154,7 @@ function Configure-Hooks {
 
 # Sync plugin cache — copy installed binary into Claude Code's plugin cache
 function Sync-PluginCache {
-    $cacheBase = Join-Path $env:USERPROFILE ".claude\plugins\cache\dullfig-plugins\claude-rlm"
+    $cacheBase = Join-Path $env:USERPROFILE ".claude\plugins\cache\dullfig-plugins\memory-rlm"
     if (-not (Test-Path $cacheBase)) { return }
 
     $src = Join-Path $InstallDir $Binary
@@ -194,7 +194,7 @@ if ($version) {
     Install-FromSource
 }
 
-Write-Ok "Installed claude-rlm to $InstallDir"
+Write-Ok "Installed memory-rlm to $InstallDir"
 Write-Host ""
 
 Add-ToPath

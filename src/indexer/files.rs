@@ -121,7 +121,7 @@ pub fn catchup(db: &Db, project_dir: &Path, session_id: &str) -> Result<CatchupS
         if file_path.exists() {
             if let Err(e) = code::reindex_file(db, &file_path) {
                 eprintln!(
-                    "[claude-rlm] File catch-up reindex failed for {}: {}",
+                    "[memory-rlm] File catch-up reindex failed for {}: {}",
                     file_name, e
                 );
             }

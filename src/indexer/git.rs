@@ -106,7 +106,7 @@ pub fn catchup(db: &Db, project_dir: &Path, session_id: &str) -> Result<CatchupS
         let file_path = project_dir.join(file_name);
         if file_path.exists() {
             if let Err(e) = code::reindex_file(db, &file_path) {
-                eprintln!("[claude-rlm] Git catch-up reindex failed for {}: {}", file_name, e);
+                eprintln!("[memory-rlm] Git catch-up reindex failed for {}: {}", file_name, e);
             }
         }
     }

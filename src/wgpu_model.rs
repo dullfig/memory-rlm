@@ -85,7 +85,7 @@ impl GpuModel {
 
         let config = extract_config(&content)?;
         eprintln!(
-            "[claude-rlm] Model: {}d, {}h, {}kv, {}layers, {}ffn",
+            "[memory-rlm] Model: {}d, {}h, {}kv, {}layers, {}ffn",
             config.d_model, config.n_heads, config.n_kv_heads,
             config.n_layers, config.ffn_intermediate
         );
@@ -108,12 +108,12 @@ impl GpuModel {
         // Load each transformer layer
         let mut layers = Vec::with_capacity(config.n_layers);
         for i in 0..config.n_layers {
-            eprintln!("[claude-rlm] Loading layer {}/{}...", i + 1, config.n_layers);
+            eprintln!("[memory-rlm] Loading layer {}/{}...", i + 1, config.n_layers);
             let layer = load_layer(&content, &mut file, &config, device, i)?;
             layers.push(layer);
         }
 
-        eprintln!("[claude-rlm] All weights loaded to GPU");
+        eprintln!("[memory-rlm] All weights loaded to GPU");
         Ok(Self {
             config,
             embedding,
@@ -251,7 +251,7 @@ fn load_and_upload(
     // Try raw Q4_K upload (3x less VRAM, GPU dequant on-the-fly)
     if let Some(info) = content.tensor_infos.get(name) {
         let gguf_dims = info.shape.dims();
-        eprintln!("[claude-rlm]   {} dtype={:?} gguf_shape={:?} expected={}x{}",
+        eprintln!("[memory-rlm]   {} dtype={:?} gguf_shape={:?} expected={}x{}",
             name, info.ggml_dtype, gguf_dims, rows, cols);
         if info.ggml_dtype == candle_core::quantized::GgmlDType::Q4K && cols % 256 == 0 {
             // Q4K shader disabled pending debugging. Using f16 dequant fallback.
@@ -359,14 +359,14 @@ fn validate_q4k_block(raw: &[u8], candle_vals: &[f32], name: &str) {
     let d1 = d * sc;
     let m1 = dmin * mn;
 
-    eprintln!("[claude-rlm]   Q4K validate '{}': d={:.6} dmin={:.6} sc={} mn={}", name, d, dmin, sc, mn);
+    eprintln!("[memory-rlm]   Q4K validate '{}': d={:.6} dmin={:.6} sc={} mn={}", name, d, dmin, sc, mn);
     for i in 0..8usize {
         let nibble = (qs[i] & 0x0F) as f32;
         let my_val = d1 * nibble - m1;
         let candle_val = candle_vals[i];
         let diff = (my_val - candle_val).abs();
         if i < 4 || diff > 0.001 {
-            eprintln!("[claude-rlm]     [{}] mine={:.6} candle={:.6} diff={:.6}{}",
+            eprintln!("[memory-rlm]     [{}] mine={:.6} candle={:.6} diff={:.6}{}",
                 i, my_val, candle_val, diff, if diff > 0.001 { " MISMATCH" } else { "" });
         }
     }

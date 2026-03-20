@@ -10,18 +10,18 @@ use crate::llm::LlmConfig;
 /// falling back to heuristic extraction.
 pub fn distill_session_smart(db: &Db, session_id: &str) -> Result<DistillStats> {
     if let Some(llm) = LlmConfig::from_env() {
-        eprintln!("[claude-rlm] Using LLM distillation ({:?}, model={})", llm.provider, llm.model);
+        eprintln!("[memory-rlm] Using LLM distillation ({:?}, model={})", llm.provider, llm.model);
         match distill_session_llm(db, session_id, &llm) {
             Ok(stats) => {
-                eprintln!("[claude-rlm] LLM distillation extracted {} entries", stats.extracted);
+                eprintln!("[memory-rlm] LLM distillation extracted {} entries", stats.extracted);
                 return Ok(stats);
             }
             Err(e) => {
-                eprintln!("[claude-rlm] LLM distillation failed, falling back to heuristics: {}", e);
+                eprintln!("[memory-rlm] LLM distillation failed, falling back to heuristics: {}", e);
             }
         }
     } else {
-        eprintln!("[claude-rlm] No LLM configured, using heuristic distillation");
+        eprintln!("[memory-rlm] No LLM configured, using heuristic distillation");
     }
     distill_session(db, session_id)
 }

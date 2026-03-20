@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm session-start",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm session-start",
             "timeout": 10
           }
         ]
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm index-prompt",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm index-prompt",
             "timeout": 5
           }
         ]
@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm index-edit",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm index-edit",
             "timeout": 5
           }
         ]
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm index-read",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm index-read",
             "timeout": 2
           }
         ]
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm index-bash",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm index-bash",
             "timeout": 2
           }
         ]
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm pre-tool-use",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm pre-tool-use",
             "timeout": 10
           }
         ]
@@ -71,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm pre-compact",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm pre-compact",
             "timeout": 10
           }
         ]
@@ -82,7 +82,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm session-end",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm session-end",
             "timeout": 5
           }
         ]

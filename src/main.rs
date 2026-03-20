@@ -24,7 +24,7 @@ use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
 
 #[derive(Parser)]
-#[command(name = "claude-rlm", about = "Persistent project memory for Claude Code", version)]
+#[command(name = "memory-rlm", about = "Persistent project memory for Claude Code", version)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -193,7 +193,7 @@ fn run_status() -> Result<()> {
     println!("ClaudeRLM Status");
     println!("=================");
     if is_disabled() {
-        println!("State:     DISABLED (run `claude-rlm enable` to re-enable)");
+        println!("State:     DISABLED (run `memory-rlm enable` to re-enable)");
     } else {
         println!("State:     enabled");
     }
@@ -362,7 +362,7 @@ fn ensure_hooks_synced() {
             None => continue,
         };
 
-        // Remove stale claude-rlm entries
+        // Remove stale memory-rlm entries
         let before = existing_arr.len();
         existing_arr.retain(|entry| !is_claude_rlm_entry(entry));
         if existing_arr.len() != before {
@@ -416,7 +416,7 @@ fn resolve_plugin_root(value: &mut serde_json::Value, root: &str) {
     }
 }
 
-/// Check if a hook entry belongs to claude-rlm (has a command containing "claude-rlm").
+/// Check if a hook entry belongs to memory-rlm (has a command containing "memory-rlm").
 fn is_claude_rlm_entry(entry: &serde_json::Value) -> bool {
     entry
         .get("hooks")
@@ -425,7 +425,7 @@ fn is_claude_rlm_entry(entry: &serde_json::Value) -> bool {
             hooks.iter().any(|h| {
                 h.get("command")
                     .and_then(|c| c.as_str())
-                    .map(|c| c.contains("claude-rlm"))
+                    .map(|c| c.contains("memory-rlm"))
                     .unwrap_or(false)
             })
         })
@@ -804,10 +804,10 @@ fn disable_flag_path() -> std::path::PathBuf {
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .unwrap_or_else(|_| ".".to_string());
-    std::path::Path::new(&home).join(".claude-rlm-disabled")
+    std::path::Path::new(&home).join(".memory-rlm-disabled")
 }
 
-/// Check if claude-rlm is disabled.
+/// Check if memory-rlm is disabled.
 fn is_disabled() -> bool {
     disable_flag_path().exists()
 }
@@ -816,8 +816,8 @@ fn is_disabled() -> bool {
 fn run_disable() -> Result<()> {
     let path = disable_flag_path();
     std::fs::write(&path, "disabled\n")?;
-    eprintln!("claude-rlm disabled. All hooks will be skipped.");
-    eprintln!("Run `claude-rlm enable` to re-enable.");
+    eprintln!("memory-rlm disabled. All hooks will be skipped.");
+    eprintln!("Run `memory-rlm enable` to re-enable.");
     Ok(())
 }
 
@@ -826,9 +826,9 @@ fn run_enable() -> Result<()> {
     let path = disable_flag_path();
     if path.exists() {
         std::fs::remove_file(&path)?;
-        eprintln!("claude-rlm enabled. Hooks are active again.");
+        eprintln!("memory-rlm enabled. Hooks are active again.");
     } else {
-        eprintln!("claude-rlm is already enabled.");
+        eprintln!("memory-rlm is already enabled.");
     }
     Ok(())
 }
@@ -843,19 +843,19 @@ fn run_config(action: ConfigAction) -> Result<()> {
                 // LLM config keys → [llm] section
                 "api-key" | "api_key" => {
                     llm::write_global_config("llm", "api_key", toml::Value::String(value))?;
-                    eprintln!("[claude-rlm] Set llm.api_key in {}", path.display());
+                    eprintln!("[memory-rlm] Set llm.api_key in {}", path.display());
                 }
                 "model" => {
                     llm::write_global_config("llm", "model", toml::Value::String(value))?;
-                    eprintln!("[claude-rlm] Set llm.model in {}", path.display());
+                    eprintln!("[memory-rlm] Set llm.model in {}", path.display());
                 }
                 "provider" => {
                     llm::write_global_config("llm", "provider", toml::Value::String(value))?;
-                    eprintln!("[claude-rlm] Set llm.provider in {}", path.display());
+                    eprintln!("[memory-rlm] Set llm.provider in {}", path.display());
                 }
                 "base-url" | "base_url" => {
                     llm::write_global_config("llm", "base_url", toml::Value::String(value))?;
-                    eprintln!("[claude-rlm] Set llm.base_url in {}", path.display());
+                    eprintln!("[memory-rlm] Set llm.base_url in {}", path.display());
                 }
 
                 // Update config → [update] section
@@ -873,24 +873,24 @@ fn run_config(action: ConfigAction) -> Result<()> {
                         "auto_update",
                         toml::Value::Boolean(enabled),
                     )?;
-                    eprintln!("[claude-rlm] Set update.auto_update = {} in {}", enabled, path.display());
+                    eprintln!("[memory-rlm] Set update.auto_update = {} in {}", enabled, path.display());
                 }
 
                 // Local inference config keys
                 "local-model-path" | "local_model_path" => {
                     llm::write_global_config("llm", "local_model_path", toml::Value::String(value))?;
-                    eprintln!("[claude-rlm] Set llm.local_model_path in {}", path.display());
+                    eprintln!("[memory-rlm] Set llm.local_model_path in {}", path.display());
                 }
                 "local-tokenizer-path" | "local_tokenizer_path" => {
                     llm::write_global_config("llm", "local_tokenizer_path", toml::Value::String(value))?;
-                    eprintln!("[claude-rlm] Set llm.local_tokenizer_path in {}", path.display());
+                    eprintln!("[memory-rlm] Set llm.local_tokenizer_path in {}", path.display());
                 }
                 "local-speed-threshold" | "local_speed_threshold" => {
                     let threshold: f64 = value.parse().map_err(|_| {
                         anyhow::anyhow!("Invalid threshold '{}'. Must be a number (e.g., 15.0)", value)
                     })?;
                     llm::write_global_config("llm", "local_speed_threshold", toml::Value::Float(threshold))?;
-                    eprintln!("[claude-rlm] Set llm.local_speed_threshold = {} in {}", threshold, path.display());
+                    eprintln!("[memory-rlm] Set llm.local_speed_threshold = {} in {}", threshold, path.display());
                 }
 
                 other => {
@@ -921,15 +921,15 @@ fn run_chat(system: &str, message: Option<&str>, interactive: bool) -> Result<()
         let (model_path, tokenizer_path) = local_model::ensure_default_model()?;
 
         let mut engine = if let Some((device, queue, gpu_info)) = compute::init_gpu_device() {
-            eprintln!("[claude-rlm] GPU: {} ({})", gpu_info.name, gpu_info.backend);
+            eprintln!("[memory-rlm] GPU: {} ({})", gpu_info.name, gpu_info.backend);
             wgpu_inference::WgpuInference::load(&model_path, &tokenizer_path, device, queue)?
         } else {
             anyhow::bail!("No GPU available for chat");
         };
 
         if interactive {
-            eprintln!("[claude-rlm] Interactive mode. Model loaded. Send messages on stdin.");
-            eprintln!("[claude-rlm] READY");
+            eprintln!("[memory-rlm] Interactive mode. Model loaded. Send messages on stdin.");
+            eprintln!("[memory-rlm] READY");
             let stdin = std::io::stdin();
             let stdout = std::io::stdout();
             let mut history = Vec::<(String, String)>::new(); // (user, assistant) pairs
@@ -1006,7 +1006,7 @@ fn run_model(action: ModelAction) -> Result<()> {
                 println!("Model downloaded successfully.");
                 println!("  Model:     {}", model_path.display());
                 println!("  Tokenizer: {}", tokenizer_path.display());
-                println!("\nRun 'claude-rlm model benchmark' to assess inference speed.");
+                println!("\nRun 'memory-rlm model benchmark' to assess inference speed.");
                 Ok(())
             }
             ModelAction::Benchmark { threshold } => {
@@ -1058,7 +1058,7 @@ fn run_model(action: ModelAction) -> Result<()> {
                     println!("  Speed:     {:.1} tok/s", tps);
                     println!("  Use local: {}", if assessment.use_local { "yes" } else { "no" });
                 } else {
-                    println!("  Not benchmarked yet. Run 'claude-rlm model benchmark'.");
+                    println!("  Not benchmarked yet. Run 'memory-rlm model benchmark'.");
                 }
                 println!("  Reason:    {}", assessment.reason);
 
@@ -1093,7 +1093,7 @@ fn run_hook(f: impl FnOnce() -> Result<()>) -> Result<()> {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
         Ok(Ok(())) => Ok(()),
         Ok(Err(e)) => {
-            eprintln!("[claude-rlm] Hook error: {}", e);
+            eprintln!("[memory-rlm] Hook error: {}", e);
             // Don't fail the hook — return Ok so Claude Code continues
             Ok(())
         }
@@ -1103,7 +1103,7 @@ fn run_hook(f: impl FnOnce() -> Result<()>) -> Result<()> {
                 .map(|s| s.as_str())
                 .or_else(|| panic.downcast_ref::<&str>().copied())
                 .unwrap_or("unknown panic");
-            eprintln!("[claude-rlm] Hook panicked: {}", msg);
+            eprintln!("[memory-rlm] Hook panicked: {}", msg);
             Ok(())
         }
     }

@@ -24,11 +24,11 @@ pub fn handle_start(input: &HookInput) -> Result<()> {
         match git::catchup(&db, std::path::Path::new(&project_dir), &session_id) {
             Ok(stats) if stats.commits > 0 => {
                 eprintln!(
-                    "[claude-rlm] Git catch-up: {} commits, {} files changed",
+                    "[memory-rlm] Git catch-up: {} commits, {} files changed",
                     stats.commits, stats.files_changed
                 );
             }
-            Err(e) => eprintln!("[claude-rlm] Git catch-up skipped: {}", e),
+            Err(e) => eprintln!("[memory-rlm] Git catch-up skipped: {}", e),
             _ => {}
         }
     }
@@ -38,11 +38,11 @@ pub fn handle_start(input: &HookInput) -> Result<()> {
         match files::catchup(&db, std::path::Path::new(&project_dir), &session_id) {
             Ok(stats) if stats.files_changed + stats.files_added + stats.files_deleted > 0 => {
                 eprintln!(
-                    "[claude-rlm] File catch-up: {} changed, {} added, {} deleted",
+                    "[memory-rlm] File catch-up: {} changed, {} added, {} deleted",
                     stats.files_changed, stats.files_added, stats.files_deleted
                 );
             }
-            Err(e) => eprintln!("[claude-rlm] File catch-up failed: {}", e),
+            Err(e) => eprintln!("[memory-rlm] File catch-up failed: {}", e),
             _ => {}
         }
     }
@@ -51,7 +51,7 @@ pub fn handle_start(input: &HookInput) -> Result<()> {
     if source == "startup" && !code::has_index(&db)? {
         let dir = std::path::Path::new(&project_dir);
         if let Err(e) = code::index_project(&db, dir) {
-            eprintln!("[claude-rlm] Initial code indexing failed: {}", e);
+            eprintln!("[memory-rlm] Initial code indexing failed: {}", e);
         }
     }
 
@@ -125,10 +125,10 @@ pub fn handle_end(input: &HookInput) -> Result<()> {
 
     // Evaluate plan completion before ending session
     if let Err(e) = plans::evaluate_completion(&db, &session_id) {
-        eprintln!("[claude-rlm] Plan evaluation failed: {}", e);
+        eprintln!("[memory-rlm] Plan evaluation failed: {}", e);
     }
     if let Err(e) = plans::abandon_stale_plans(&db, 7) {
-        eprintln!("[claude-rlm] Stale plan cleanup failed: {}", e);
+        eprintln!("[memory-rlm] Stale plan cleanup failed: {}", e);
     }
 
     // Queue distillation for the next session's MCP server

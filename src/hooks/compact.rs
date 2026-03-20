@@ -17,17 +17,17 @@ pub fn handle(input: &HookInput) -> Result<()> {
 
     hooks::log_hook(&db, input, "PreCompact", "");
 
-    eprintln!("[claude-rlm] PreCompact: ensuring index is current for session {session_id}");
+    eprintln!("[memory-rlm] PreCompact: ensuring index is current for session {session_id}");
 
     // 1. Generate checkpoint summary — this is the critical part that
     //    survives compaction. Must complete before compaction proceeds.
     generate_checkpoint_summary(&db, &session_id)?;
-    eprintln!("[claude-rlm] PreCompact: checkpoint saved");
+    eprintln!("[memory-rlm] PreCompact: checkpoint saved");
 
     // 2. Enqueue stale-file re-indexing as a background task for the MCP server.
     //    This avoids blocking compaction on potentially slow tree-sitter work.
     crate::db::tasks::enqueue_task(&db, "reindex_stale", &project_dir, None)?;
-    eprintln!("[claude-rlm] PreCompact: enqueued reindex_stale task");
+    eprintln!("[memory-rlm] PreCompact: enqueued reindex_stale task");
 
     Ok(())
 }

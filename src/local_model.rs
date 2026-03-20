@@ -43,7 +43,7 @@ pub struct ModelSpec {
     pub hf_tokenizer_repo: &'static str,
 }
 
-const GITHUB_REPO: &str = "dullfig/claude-rlm";
+const GITHUB_REPO: &str = "dullfig/memory-rlm";
 
 /// A locally-loaded quantized model for inference.
 pub struct LocalModel {
@@ -203,10 +203,10 @@ impl LocalModel {
 pub fn models_dir() -> PathBuf {
     if cfg!(windows) {
         let base = std::env::var("APPDATA").unwrap_or_else(|_| ".".into());
-        PathBuf::from(base).join("claude-rlm").join("models")
+        PathBuf::from(base).join("memory-rlm").join("models")
     } else {
         let base = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-        PathBuf::from(base).join(".config").join("claude-rlm").join("models")
+        PathBuf::from(base).join(".config").join("memory-rlm").join("models")
     }
 }
 
@@ -245,7 +245,7 @@ pub fn ensure_default_model() -> Result<(PathBuf, PathBuf)> {
         }
     }
 
-    Err(anyhow!("No model found. Run 'claude-rlm model download' or wait for auto-setup."))
+    Err(anyhow!("No model found. Run 'memory-rlm model download' or wait for auto-setup."))
 }
 
 /// Download model — tries GitHub releases first, falls back to HuggingFace.
@@ -259,7 +259,7 @@ pub fn download_default_model() -> Result<(PathBuf, PathBuf)> {
     let vram_gb = 0.0;
 
     let spec = pick_model(vram_gb);
-    eprintln!("[claude-rlm] Selected model: {} (VRAM: {:.1} GB)", spec.name, vram_gb);
+    eprintln!("[memory-rlm] Selected model: {} (VRAM: {:.1} GB)", spec.name, vram_gb);
 
     download_model(spec)
 }
@@ -274,18 +274,18 @@ pub fn download_model(spec: &ModelSpec) -> Result<(PathBuf, PathBuf)> {
 
     // Already have it?
     if model_path.exists() && tokenizer_path.exists() {
-        eprintln!("[claude-rlm] Model already downloaded: {}", model_path.display());
+        eprintln!("[memory-rlm] Model already downloaded: {}", model_path.display());
         return Ok((model_path, tokenizer_path));
     }
 
     // Try GitHub releases first
     match download_from_github(spec, &model_path, &tokenizer_path) {
         Ok(()) => {
-            eprintln!("[claude-rlm] Downloaded from GitHub releases");
+            eprintln!("[memory-rlm] Downloaded from GitHub releases");
             return Ok((model_path, tokenizer_path));
         }
         Err(e) => {
-            eprintln!("[claude-rlm] GitHub download failed ({}), trying HuggingFace...", e);
+            eprintln!("[memory-rlm] GitHub download failed ({}), trying HuggingFace...", e);
         }
     }
 
@@ -297,7 +297,7 @@ pub fn download_model(spec: &ModelSpec) -> Result<(PathBuf, PathBuf)> {
 /// Download model assets from the latest GitHub release.
 fn download_from_github(spec: &ModelSpec, model_dst: &Path, tokenizer_dst: &Path) -> Result<()> {
     let client = reqwest::blocking::Client::builder()
-        .user_agent("claude-rlm")
+        .user_agent("memory-rlm")
         .timeout(std::time::Duration::from_secs(600))
         .build()?;
 
@@ -319,14 +319,14 @@ fn download_from_github(spec: &ModelSpec, model_dst: &Path, tokenizer_dst: &Path
     // Download model
     let model_url = model_asset["browser_download_url"].as_str()
         .ok_or_else(|| anyhow!("No download URL for model asset"))?;
-    eprintln!("[claude-rlm] Downloading {} (~2 GB)...", spec.gguf_asset);
+    eprintln!("[memory-rlm] Downloading {} (~2 GB)...", spec.gguf_asset);
     let data = client.get(model_url).send()?.bytes()?;
     std::fs::write(model_dst, &data)?;
 
     // Download tokenizer
     let tok_url = tokenizer_asset["browser_download_url"].as_str()
         .ok_or_else(|| anyhow!("No download URL for tokenizer asset"))?;
-    eprintln!("[claude-rlm] Downloading {}...", spec.tokenizer_asset);
+    eprintln!("[memory-rlm] Downloading {}...", spec.tokenizer_asset);
     let data = client.get(tok_url).send()?.bytes()?;
     std::fs::write(tokenizer_dst, &data)?;
 
@@ -335,7 +335,7 @@ fn download_from_github(spec: &ModelSpec, model_dst: &Path, tokenizer_dst: &Path
 
 /// Fallback: download from HuggingFace Hub.
 fn download_from_huggingface(spec: &ModelSpec, model_dst: &Path, tokenizer_dst: &Path) -> Result<()> {
-    eprintln!("[claude-rlm] Downloading from HuggingFace: {}/{}", spec.hf_repo, spec.hf_file);
+    eprintln!("[memory-rlm] Downloading from HuggingFace: {}/{}", spec.hf_repo, spec.hf_file);
 
     let api = hf_hub::api::sync::ApiBuilder::new()
         .with_progress(true)
@@ -358,8 +358,8 @@ fn download_from_huggingface(spec: &ModelSpec, model_dst: &Path, tokenizer_dst: 
         std::fs::copy(&hf_tokenizer, tokenizer_dst)?;
     }
 
-    eprintln!("[claude-rlm] Model:     {}", model_dst.display());
-    eprintln!("[claude-rlm] Tokenizer: {}", tokenizer_dst.display());
+    eprintln!("[memory-rlm] Model:     {}", model_dst.display());
+    eprintln!("[memory-rlm] Tokenizer: {}", tokenizer_dst.display());
     Ok(())
 }
 
@@ -370,32 +370,32 @@ pub fn benchmark_default() -> Result<f64> {
 
     // Try GPU benchmark
     if let Some((device, queue, gpu_info)) = crate::compute::init_gpu_device() {
-        eprintln!("[claude-rlm] Loading model to GPU ({})...", gpu_info.name);
+        eprintln!("[memory-rlm] Loading model to GPU ({})...", gpu_info.name);
         match crate::wgpu_inference::WgpuInference::load(
             &model_path, &tokenizer_path, device, queue,
         ) {
             Ok(mut gpu) => {
-                eprintln!("[claude-rlm] Running GPU benchmark (20 tokens)...");
+                eprintln!("[memory-rlm] Running GPU benchmark (20 tokens)...");
                 return gpu.benchmark(20);
             }
-            Err(e) => eprintln!("[claude-rlm] GPU init failed, CPU fallback: {}", e),
+            Err(e) => eprintln!("[memory-rlm] GPU init failed, CPU fallback: {}", e),
         }
     }
 
     // CPU fallback
-    eprintln!("[claude-rlm] Loading model for CPU benchmark...");
+    eprintln!("[memory-rlm] Loading model for CPU benchmark...");
     let mut model = LocalModel::load(&model_path, &tokenizer_path)?;
-    eprintln!("[claude-rlm] Running CPU benchmark (20 tokens)...");
+    eprintln!("[memory-rlm] Running CPU benchmark (20 tokens)...");
     model.benchmark(20)
 }
 
 /// Benchmark with explicit model paths (used by auto-setup).
 pub fn benchmark_with_paths(model_path: &std::path::Path, tokenizer_path: &std::path::Path) -> Result<f64> {
     if let Some((device, queue, gpu_info)) = crate::compute::init_gpu_device() {
-        eprintln!("[claude-rlm] Benchmarking on GPU ({})...", gpu_info.name);
+        eprintln!("[memory-rlm] Benchmarking on GPU ({})...", gpu_info.name);
         match crate::wgpu_inference::WgpuInference::load(model_path, tokenizer_path, device, queue) {
             Ok(mut gpu) => return gpu.benchmark(20),
-            Err(e) => eprintln!("[claude-rlm] GPU init failed, CPU fallback: {}", e),
+            Err(e) => eprintln!("[memory-rlm] GPU init failed, CPU fallback: {}", e),
         }
     }
     let mut model = LocalModel::load(model_path, tokenizer_path)?;
@@ -408,12 +408,12 @@ pub fn complete_local(system: &str, user_message: &str, max_tokens: usize) -> Re
 
     // Try GPU inference first
     if let Some((device, queue, gpu_info)) = crate::compute::init_gpu_device() {
-        eprintln!("[claude-rlm] Using GPU: {} ({})", gpu_info.name, gpu_info.backend);
+        eprintln!("[memory-rlm] Using GPU: {} ({})", gpu_info.name, gpu_info.backend);
         match crate::wgpu_inference::WgpuInference::load(
             &model_path, &tokenizer_path, device, queue,
         ) {
             Ok(mut gpu) => return gpu.complete(system, user_message, max_tokens),
-            Err(e) => eprintln!("[claude-rlm] GPU init failed, CPU fallback: {}", e),
+            Err(e) => eprintln!("[memory-rlm] GPU init failed, CPU fallback: {}", e),
         }
     }
 

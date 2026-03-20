@@ -1,10 +1,10 @@
-# /claude-rlm:status
+# /memory-rlm:status
 
 Show ClaudeRLM memory status and statistics for the current project.
 
 Run:
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm" status
+"${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm" status
 ```
 
 This shows:

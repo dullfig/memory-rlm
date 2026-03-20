@@ -89,7 +89,7 @@ pub fn handle(input: &HookInput) -> Result<()> {
             if let Some(db) = &log_db {
                 hooks::log_hook(db, input, "PreToolUse", &format!("Task/Explore: error: {}", e));
             }
-            eprintln!("[claude-rlm] Explore briefing failed: {}", e);
+            eprintln!("[memory-rlm] Explore briefing failed: {}", e);
         }
     }
 
@@ -152,7 +152,7 @@ fn build_explore_briefing(project_dir: &str, prompt: &str) -> Result<Option<Stri
                 )));
             }
             Err(e) => {
-                eprintln!("[claude-rlm] Haiku synthesis failed, using raw data: {}", e);
+                eprintln!("[memory-rlm] Haiku synthesis failed, using raw data: {}", e);
             }
         }
     }

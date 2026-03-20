@@ -15,16 +15,16 @@ jobs:
         include:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-            artifact: claude-rlm.exe
+            artifact: memory-rlm.exe
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            artifact: claude-rlm
+            artifact: memory-rlm
           - target: x86_64-apple-darwin
             os: macos-latest
-            artifact: claude-rlm
+            artifact: memory-rlm
           - target: aarch64-apple-darwin
             os: macos-latest
-            artifact: claude-rlm
+            artifact: memory-rlm
 
     runs-on: ${{ matrix.os }}
 
@@ -46,7 +46,7 @@ jobs:
           cp target/${{ matrix.target }}/release/${{ matrix.artifact }} staging/
           cp hooks/hooks.json staging/hooks/
           cd staging
-          tar czf ../claude-rlm-${{ matrix.target }}.tar.gz ${{ matrix.artifact }} hooks/hooks.json
+          tar czf ../memory-rlm-${{ matrix.target }}.tar.gz ${{ matrix.artifact }} hooks/hooks.json
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -54,13 +54,13 @@ jobs:
           New-Item -ItemType Directory -Path staging/hooks -Force
           Copy-Item target/${{ matrix.target }}/release/${{ matrix.artifact }} staging/
           Copy-Item hooks/hooks.json staging/hooks/
-          Compress-Archive -Path staging/* -DestinationPath claude-rlm-${{ matrix.target }}.zip
+          Compress-Archive -Path staging/* -DestinationPath memory-rlm-${{ matrix.target }}.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: claude-rlm-${{ matrix.target }}
-          path: claude-rlm-${{ matrix.target }}.*
+          name: memory-rlm-${{ matrix.target }}
+          path: memory-rlm-${{ matrix.target }}.*
 
   release:
     needs: build

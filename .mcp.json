@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "claude-rlm": {
+    "memory-rlm": {
       "type": "stdio",
-      "command": "${CLAUDE_PLUGIN_ROOT}/bin/claude-rlm-serve",
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/memory-rlm-serve",
       "args": [],
       "env": {
         "CLAUDE_PLUGIN_ROOT": "."

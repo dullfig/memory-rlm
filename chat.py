@@ -1,7 +1,7 @@
 """
 Chat window for local Qwen2.5-0.5B running on GPU via WGPU.
 
-Launches claude-rlm in interactive mode (model stays loaded between messages).
+Launches memory-rlm in interactive mode (model stays loaded between messages).
 Tokens stream to the window in real-time as they're generated.
 """
 
@@ -13,9 +13,9 @@ import time
 import sys
 import os
 
-BINARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "target", "release", "claude-rlm.exe")
+BINARY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "target", "release", "memory-rlm.exe")
 if not os.path.exists(BINARY):
-    BINARY = "claude-rlm"
+    BINARY = "memory-rlm"
 
 
 class ChatApp:
@@ -84,7 +84,7 @@ class ChatApp:
         self.chat.config(state=tk.DISABLED)
 
     def start_engine(self):
-        """Launch claude-rlm chat --interactive as a persistent subprocess."""
+        """Launch memory-rlm chat --interactive as a persistent subprocess."""
         try:
             self.proc = subprocess.Popen(
                 [BINARY, "chat", "--interactive"],

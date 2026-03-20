@@ -470,48 +470,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
 
 [[package]]
-name = "claude-rlm"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "bytemuck",
- "candle-core",
- "candle-nn",
- "candle-transformers",
- "chrono",
- "clap",
- "flate2",
- "half",
- "hf-hub",
- "ignore",
- "notify",
- "pollster",
- "reqwest",
- "rmcp",
- "rusqlite",
- "schemars",
- "serde",
- "serde_json",
- "tar",
- "tokenizers",
- "tokio",
- "toml",
- "tracing",
- "tracing-subscriber",
- "tree-sitter",
- "tree-sitter-c",
- "tree-sitter-cpp",
- "tree-sitter-go",
- "tree-sitter-javascript",
- "tree-sitter-python",
- "tree-sitter-rust",
- "tree-sitter-typescript",
- "uuid",
- "wgpu",
- "zip 2.4.2",
-]
-
-[[package]]
 name = "codespan-reporting"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2262,6 +2220,48 @@ checksum = "714098028fe011992e1c3962653c96b2d578c4b4bce9036e15ff220319b1e0e3"
 dependencies = [
  "libc",
  "stable_deref_trait",
+]
+
+[[package]]
+name = "memory-rlm"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "candle-core",
+ "candle-nn",
+ "candle-transformers",
+ "chrono",
+ "clap",
+ "flate2",
+ "half",
+ "hf-hub",
+ "ignore",
+ "notify",
+ "pollster",
+ "reqwest",
+ "rmcp",
+ "rusqlite",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tar",
+ "tokenizers",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "tree-sitter",
+ "tree-sitter-c",
+ "tree-sitter-cpp",
+ "tree-sitter-go",
+ "tree-sitter-javascript",
+ "tree-sitter-python",
+ "tree-sitter-rust",
+ "tree-sitter-typescript",
+ "uuid",
+ "wgpu",
+ "zip 2.4.2",
 ]
 
 [[package]]

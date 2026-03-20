@@ -1,8 +1,8 @@
 {
-  "name": "claude-rlm",
+  "name": "memory-rlm",
   "version": "0.2.0",
   "description": "Persistent project memory for Claude Code",
   "license": "BUSL-1.1",
   "author": { "name": "dullfig" },
-  "homepage": "https://github.com/dullfig/claude-rlm"
+  "homepage": "https://github.com/dullfig/memory-rlm"
 }

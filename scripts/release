@@ -94,8 +94,9 @@ ok "Pushed memory-rlm $TAG — CI will build binaries"
 info "Updating claude-plugins marketplace..."
 
 # Update only the memory-rlm version, preserving other plugins in the file.
-# Matches the "memory-rlm" name line, then updates the next "version" line.
-sed -i '/"name": "memory-rlm"/{n;s/"version": "[^"]*"/"version": "'"$NEW_VERSION"'"/}' "$MARKETPLACE_JSON"
+# Matches the "memory-rlm" name line, sets a flag, then updates the first
+# subsequent "version" line.
+sed -i '/"name": "memory-rlm"/,/"version":/{s/"version": "[^"]*"/"version": "'"$NEW_VERSION"'"/}' "$MARKETPLACE_JSON"
 
 cd "$MARKETPLACE"
 git add .claude-plugin/marketplace.json

@@ -5,11 +5,22 @@
 set -e
 
 PLUGIN_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BINARY="${PLUGIN_ROOT}/bin/memory-rlm"
 REPO="dullfig/memory-rlm"
 
+# Detect if running on Windows (Git Bash / MSYS / MINGW)
+IS_WINDOWS=false
+case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) IS_WINDOWS=true ;;
+esac
+
+if $IS_WINDOWS; then
+    BINARY="${PLUGIN_ROOT}/bin/memory-rlm.exe"
+else
+    BINARY="${PLUGIN_ROOT}/bin/memory-rlm"
+fi
+
 # Fast path: binary already exists
-if [ -x "$BINARY" ]; then
+if [ -x "$BINARY" ] || { $IS_WINDOWS && [ -f "$BINARY" ]; }; then
     exit 0
 fi
 
@@ -19,14 +30,15 @@ info "First run — downloading memory-rlm binary..."
 
 # Detect platform
 detect_platform() {
-    local os arch
+    local os arch ext
     os="$(uname -s)"
     arch="$(uname -m)"
 
     case "$os" in
-        Linux)  os="unknown-linux-gnu" ;;
-        Darwin) os="apple-darwin" ;;
-        *)      info "Unsupported OS: $os"; exit 1 ;;
+        Linux)          os="unknown-linux-gnu" ;;
+        Darwin)         os="apple-darwin" ;;
+        MINGW*|MSYS*|CYGWIN*) os="pc-windows-msvc" ;;
+        *)              info "Unsupported OS: $os"; exit 1 ;;
     esac
 
     case "$arch" in
@@ -60,24 +72,43 @@ if [ -z "$version" ]; then
     exit 1
 fi
 
-url="https://github.com/${REPO}/releases/download/${version}/memory-rlm-${platform}.tar.gz"
 tmpdir="$(mktemp -d)"
 
-info "Downloading ${version} for ${platform}..."
+if $IS_WINDOWS; then
+    url="https://github.com/${REPO}/releases/download/${version}/memory-rlm-${platform}.zip"
+    info "Downloading ${version} for ${platform}..."
 
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$url" -o "${tmpdir}/archive.tar.gz"
-elif command -v wget >/dev/null 2>&1; then
-    wget -q "$url" -O "${tmpdir}/archive.tar.gz"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$url" -o "${tmpdir}/archive.zip"
+    else
+        info "ERROR: curl not found."
+        exit 1
+    fi
+
+    # Use PowerShell to extract zip on Windows
+    powershell.exe -NoProfile -Command \
+        "Expand-Archive -Path '$(cygpath -w "${tmpdir}/archive.zip")' -DestinationPath '$(cygpath -w "${tmpdir}")' -Force"
+    mkdir -p "${PLUGIN_ROOT}/bin"
+    mv "${tmpdir}/memory-rlm.exe" "$BINARY"
 else
-    info "ERROR: Neither curl nor wget found."
-    exit 1
+    url="https://github.com/${REPO}/releases/download/${version}/memory-rlm-${platform}.tar.gz"
+    info "Downloading ${version} for ${platform}..."
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$url" -o "${tmpdir}/archive.tar.gz"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$url" -O "${tmpdir}/archive.tar.gz"
+    else
+        info "ERROR: Neither curl nor wget found."
+        exit 1
+    fi
+
+    tar xzf "${tmpdir}/archive.tar.gz" -C "${tmpdir}"
+    mkdir -p "${PLUGIN_ROOT}/bin"
+    mv "${tmpdir}/memory-rlm" "$BINARY"
+    chmod +x "$BINARY"
 fi
 
-tar xzf "${tmpdir}/archive.tar.gz" -C "${tmpdir}"
-mkdir -p "${PLUGIN_ROOT}/bin"
-mv "${tmpdir}/memory-rlm" "$BINARY"
-chmod +x "$BINARY"
 rm -rf "$tmpdir"
 
 # Record the installed version

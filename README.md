@@ -1,4 +1,4 @@
-# ClaudeRLM
+# MemoryRLM
 
 Persistent project memory for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). A Rust MCP server that transparently indexes your conversation context and code changes, then re-injects the most relevant information when context is lost to compaction.
 

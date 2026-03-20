@@ -93,24 +93,9 @@ ok "Pushed memory-rlm $TAG — CI will build binaries"
 # --- Step 3: Update marketplace ---
 info "Updating claude-plugins marketplace..."
 
-# Use a portable approach: write the correct JSON
-cat > "$MARKETPLACE_JSON" << EOF
-{
-  "name": "dullfig-plugins",
-  "description": "Claude Code plugins by dullfig",
-  "plugins": [
-    {
-      "name": "memory-rlm",
-      "description": "Persistent project memory for Claude Code",
-      "version": "$NEW_VERSION",
-      "source": {
-        "source": "url",
-        "url": "https://github.com/dullfig/memory-rlm.git"
-      }
-    }
-  ]
-}
-EOF
+# Update only the memory-rlm version, preserving other plugins in the file.
+# Matches the "memory-rlm" name line, then updates the next "version" line.
+sed -i '/"name": "memory-rlm"/{n;s/"version": "[^"]*"/"version": "'"$NEW_VERSION"'"/}' "$MARKETPLACE_JSON"
 
 cd "$MARKETPLACE"
 git add .claude-plugin/marketplace.json

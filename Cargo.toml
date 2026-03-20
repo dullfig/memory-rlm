@@ -47,6 +47,32 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4"] }
 ignore = "0.4"
 
+# Local inference (optional — enable with "local-inference" feature)
+candle-core = { version = "0.8", optional = true }
+candle-nn = { version = "0.8", optional = true }
+candle-transformers = { version = "0.8", optional = true }
+tokenizers = { version = "0.21", optional = true, default-features = false, features = ["onig"] }
+hf-hub = { version = "0.4", optional = true }
+wgpu = { version = "24", optional = true }
+pollster = { version = "0.4", optional = true }
+bytemuck = { version = "1", features = ["derive"], optional = true }
+half = { version = "2", optional = true }
+
+[features]
+default = ["local-inference"]
+local-inference = [
+    "dep:candle-core",
+    "dep:candle-nn",
+    "dep:candle-transformers",
+    "dep:tokenizers",
+    "dep:hf-hub",
+    "dep:wgpu",
+    "dep:pollster",
+    "dep:bytemuck",
+    "dep:half",
+]
+cuda = ["candle-core/cuda"]
+
 [target.'cfg(windows)'.dependencies]
 zip = "2"
 

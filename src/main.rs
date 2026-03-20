@@ -10,6 +10,15 @@ mod treesitter;
 mod update;
 mod watcher;
 
+#[cfg(feature = "local-inference")]
+mod compute;
+#[cfg(feature = "local-inference")]
+mod local_model;
+#[cfg(feature = "local-inference")]
+mod wgpu_inference;
+#[cfg(feature = "local-inference")]
+mod wgpu_model;
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use rmcp::ServiceExt;
@@ -68,6 +77,25 @@ enum Commands {
         #[command(subcommand)]
         action: ConfigAction,
     },
+
+    /// Manage local inference model
+    Model {
+        #[command(subcommand)]
+        action: ModelAction,
+    },
+
+    /// Chat with the local model
+    Chat {
+        /// Single message (non-interactive mode)
+        #[arg(long)]
+        message: Option<String>,
+        /// System prompt
+        #[arg(long, default_value = "You are a helpful, concise assistant. Keep responses short.")]
+        system: String,
+        /// Interactive mode: read messages from stdin, stream tokens to stdout
+        #[arg(long)]
+        interactive: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -79,6 +107,20 @@ enum ConfigAction {
         /// The value to set
         value: String,
     },
+}
+
+#[derive(Subcommand)]
+enum ModelAction {
+    /// Download the default local model (Qwen2.5-0.5B-Instruct Q4)
+    Download,
+    /// Benchmark local inference speed and cache the result
+    Benchmark {
+        /// Minimum tokens/second to consider local viable (default: 15.0)
+        #[arg(long, default_value = "15.0")]
+        threshold: f64,
+    },
+    /// Show GPU info and current assessment status
+    Status,
 }
 
 #[tokio::main]
@@ -123,6 +165,8 @@ async fn main() -> Result<()> {
         Some(Commands::Disable) => run_disable(),
         Some(Commands::Enable) => run_enable(),
         Some(Commands::Config { action }) => run_config(action),
+        Some(Commands::Model { action }) => run_model(action),
+        Some(Commands::Chat { message, system, interactive }) => run_chat(&system, message.as_deref(), interactive),
     }
 }
 
@@ -453,6 +497,12 @@ async fn run_server() -> Result<()> {
 
     // Check for updates in the background
     update::spawn_update_check();
+
+    // Auto-setup local inference in the background (detect GPU, download model, benchmark)
+    #[cfg(feature = "local-inference")]
+    std::thread::spawn(|| {
+        compute::auto_setup();
+    });
 
     // Spawn a watchdog that detects stdin close and force-exits.
     // rmcp's async stdin reader may not detect EOF promptly on Windows,
@@ -826,9 +876,26 @@ fn run_config(action: ConfigAction) -> Result<()> {
                     eprintln!("[claude-rlm] Set update.auto_update = {} in {}", enabled, path.display());
                 }
 
+                // Local inference config keys
+                "local-model-path" | "local_model_path" => {
+                    llm::write_global_config("llm", "local_model_path", toml::Value::String(value))?;
+                    eprintln!("[claude-rlm] Set llm.local_model_path in {}", path.display());
+                }
+                "local-tokenizer-path" | "local_tokenizer_path" => {
+                    llm::write_global_config("llm", "local_tokenizer_path", toml::Value::String(value))?;
+                    eprintln!("[claude-rlm] Set llm.local_tokenizer_path in {}", path.display());
+                }
+                "local-speed-threshold" | "local_speed_threshold" => {
+                    let threshold: f64 = value.parse().map_err(|_| {
+                        anyhow::anyhow!("Invalid threshold '{}'. Must be a number (e.g., 15.0)", value)
+                    })?;
+                    llm::write_global_config("llm", "local_speed_threshold", toml::Value::Float(threshold))?;
+                    eprintln!("[claude-rlm] Set llm.local_speed_threshold = {} in {}", threshold, path.display());
+                }
+
                 other => {
                     anyhow::bail!(
-                        "Unknown config key '{}'. Valid keys: api-key, model, provider, base-url, auto-update",
+                        "Unknown config key '{}'. Valid keys: api-key, model, provider, base-url, auto-update, local-model-path, local-tokenizer-path, local-speed-threshold",
                         other
                     );
                 }
@@ -836,6 +903,184 @@ fn run_config(action: ConfigAction) -> Result<()> {
 
             Ok(())
         }
+    }
+}
+
+/// Run chat with the local model.
+///
+/// Interactive mode (--interactive): reads newline-delimited messages from stdin,
+/// streams tokens to stdout with `\x04` (EOT) as end-of-response delimiter.
+/// Model stays loaded between messages — zero reload latency.
+///
+/// Single-turn mode (--message "..."): prints response and exits.
+fn run_chat(system: &str, message: Option<&str>, interactive: bool) -> Result<()> {
+    #[cfg(feature = "local-inference")]
+    {
+        use std::io::{BufRead, Write};
+
+        let (model_path, tokenizer_path) = local_model::ensure_default_model()?;
+
+        let mut engine = if let Some((device, queue, gpu_info)) = compute::init_gpu_device() {
+            eprintln!("[claude-rlm] GPU: {} ({})", gpu_info.name, gpu_info.backend);
+            wgpu_inference::WgpuInference::load(&model_path, &tokenizer_path, device, queue)?
+        } else {
+            anyhow::bail!("No GPU available for chat");
+        };
+
+        if interactive {
+            eprintln!("[claude-rlm] Interactive mode. Model loaded. Send messages on stdin.");
+            eprintln!("[claude-rlm] READY");
+            let stdin = std::io::stdin();
+            let stdout = std::io::stdout();
+            let mut history = Vec::<(String, String)>::new(); // (user, assistant) pairs
+
+            for line in stdin.lock().lines() {
+                let msg = match line {
+                    Ok(l) => l,
+                    Err(_) => break,
+                };
+                let msg = msg.trim().to_string();
+                if msg.is_empty() { continue; }
+
+                // Build full ChatML prompt with conversation history
+                let mut prompt = format!("<|im_start|>system\n{}<|im_end|>\n", system);
+                for (user_turn, asst_turn) in &history {
+                    prompt.push_str(&format!(
+                        "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n{}<|im_end|>\n",
+                        user_turn, asst_turn
+                    ));
+                }
+                prompt.push_str(&format!(
+                    "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+                    msg
+                ));
+
+                let mut response = String::new();
+                engine.complete_streaming(&prompt, 512, |token| {
+                    response.push_str(&token);
+                    print!("{}", token);
+                    let _ = stdout.lock().flush();
+                })?;
+
+                // Save this turn for context
+                history.push((msg, response));
+                // Keep last 10 turns to avoid exceeding context length
+                if history.len() > 10 {
+                    history.remove(0);
+                }
+
+                print!("\x04");
+                let _ = stdout.lock().flush();
+            }
+        } else if let Some(msg) = message {
+            let prompt = format!(
+                "<|im_start|>system\n{}<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+                system, msg
+            );
+            engine.complete_streaming(&prompt, 512, |token| {
+                print!("{}", token);
+                let _ = std::io::stdout().flush();
+            })?;
+            println!();
+        } else {
+            anyhow::bail!("Provide --message or --interactive");
+        }
+
+        Ok(())
+    }
+
+    #[cfg(not(feature = "local-inference"))]
+    {
+        let _ = (system, message, interactive);
+        anyhow::bail!("Local inference not available. Rebuild with --features local-inference");
+    }
+}
+
+/// Handle `model` subcommands.
+fn run_model(action: ModelAction) -> Result<()> {
+    #[cfg(feature = "local-inference")]
+    {
+        match action {
+            ModelAction::Download => {
+                let (model_path, tokenizer_path) = local_model::download_default_model()?;
+                println!("Model downloaded successfully.");
+                println!("  Model:     {}", model_path.display());
+                println!("  Tokenizer: {}", tokenizer_path.display());
+                println!("\nRun 'claude-rlm model benchmark' to assess inference speed.");
+                Ok(())
+            }
+            ModelAction::Benchmark { threshold } => {
+                println!("Detecting GPU...");
+                if let Some(gpu) = compute::detect_gpu() {
+                    println!("  GPU:     {}", gpu.name);
+                    println!("  Backend: {}", gpu.backend);
+                    println!("  Type:    {}", gpu.device_type);
+                } else {
+                    println!("  No GPU detected (will use CPU)");
+                }
+
+                println!("\nBenchmarking local inference...");
+                let assessment = compute::run_full_assessment(threshold)?;
+
+                println!("\nResults:");
+                if let Some(tps) = assessment.tokens_per_second {
+                    println!("  Speed:     {:.1} tok/s", tps);
+                }
+                println!("  Threshold: {:.1} tok/s", threshold);
+                println!("  Use local: {}", if assessment.use_local { "YES" } else { "no" });
+                println!("  Reason:    {}", assessment.reason);
+
+                if assessment.use_local {
+                    println!("\nLocal inference is viable! Set provider = \"auto\" to use it.");
+                } else {
+                    println!("\nLocal inference too slow. Will use API (Haiku) for distillation.");
+                }
+                Ok(())
+            }
+            ModelAction::Status => {
+                println!("Local Inference Status");
+                println!("=====================");
+
+                if let Some(gpu) = compute::detect_gpu() {
+                    println!("GPU:     {}", gpu.name);
+                    println!("Backend: {}", gpu.backend);
+                    println!("Type:    {}", gpu.device_type);
+                } else {
+                    println!("GPU:     not detected");
+                }
+
+                let threshold = llm::LlmConfig::from_env()
+                    .map(|c| c.local_speed_threshold)
+                    .unwrap_or(15.0);
+                let assessment = compute::assess_compute(threshold);
+                println!("\nAssessment:");
+                if let Some(tps) = assessment.tokens_per_second {
+                    println!("  Speed:     {:.1} tok/s", tps);
+                    println!("  Use local: {}", if assessment.use_local { "yes" } else { "no" });
+                } else {
+                    println!("  Not benchmarked yet. Run 'claude-rlm model benchmark'.");
+                }
+                println!("  Reason:    {}", assessment.reason);
+
+                // Show LLM config
+                if let Some(llm_cfg) = llm::LlmConfig::from_env() {
+                    println!("\nLLM Config:");
+                    println!("  Provider: {:?}", llm_cfg.provider);
+                    if !llm_cfg.model.is_empty() {
+                        println!("  Model:    {}", llm_cfg.model);
+                    }
+                    println!("  Threshold: {:.1} tok/s", llm_cfg.local_speed_threshold);
+                }
+
+                Ok(())
+            }
+        }
+    }
+
+    #[cfg(not(feature = "local-inference"))]
+    {
+        let _ = action;
+        anyhow::bail!("Local inference not available. Rebuild with: cargo build --features local-inference");
     }
 }
 

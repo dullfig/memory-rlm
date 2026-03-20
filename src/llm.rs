@@ -14,22 +14,35 @@ use std::path::PathBuf;
 ///
 /// Config format:
 ///   [llm]
-///   provider = "anthropic"       # or "openai", "ollama"
+///   provider = "auto"            # "auto", "local", "anthropic", "openai", "ollama"
 ///   api_key = "sk-ant-..."
 ///   model = "claude-haiku-4-5-20251001"
 ///   base_url = "https://api.anthropic.com"
+///   local_model_path = "/path/to/model.gguf"       # optional, default auto-downloads
+///   local_tokenizer_path = "/path/to/tokenizer.json"
+///   local_speed_threshold = 15.0                   # min tok/s to use local
 #[derive(Debug, Clone)]
 pub struct LlmConfig {
     pub provider: Provider,
     pub api_key: Option<String>,
     pub model: String,
     pub base_url: String,
+    /// Path to a GGUF model file (optional, auto-downloads default model if unset).
+    pub local_model_path: Option<String>,
+    /// Path to a tokenizer.json file (optional, auto-downloads if unset).
+    pub local_tokenizer_path: Option<String>,
+    /// Minimum tokens/second to consider local inference viable (default: 15.0).
+    pub local_speed_threshold: f64,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Provider {
     Anthropic,
     OpenAICompat,
+    /// Force local model inference via Candle.
+    Local,
+    /// Auto-detect: use local if benchmarked and fast enough, else fall back to API.
+    Auto,
 }
 
 /// The [llm] section of the config file.
@@ -45,6 +58,9 @@ struct LlmFileConfig {
     api_key: Option<String>,
     model: Option<String>,
     base_url: Option<String>,
+    local_model_path: Option<String>,
+    local_tokenizer_path: Option<String>,
+    local_speed_threshold: Option<f64>,
 }
 
 impl LlmConfig {
@@ -59,21 +75,27 @@ impl LlmConfig {
 
         let provider_str = file_cfg.llm.provider
             .or_else(|| std::env::var("CONTEXTMEM_LLM_PROVIDER").ok())
-            .unwrap_or_else(|| "anthropic".to_string());
+            .unwrap_or_else(|| "auto".to_string());
 
         let provider = match provider_str.to_lowercase().as_str() {
             "openai" | "ollama" | "openrouter" => Provider::OpenAICompat,
-            _ => Provider::Anthropic,
+            "anthropic" => Provider::Anthropic,
+            "local" => Provider::Local,
+            _ => Provider::Auto,
         };
 
         let (default_model, default_url) = match provider {
-            Provider::Anthropic => (
+            Provider::Anthropic | Provider::Auto => (
                 "claude-haiku-4-5-20251001".to_string(),
                 "https://api.anthropic.com".to_string(),
             ),
             Provider::OpenAICompat => (
                 "llama3".to_string(),
                 "http://localhost:11434".to_string(),
+            ),
+            Provider::Local => (
+                String::new(),
+                String::new(),
             ),
         };
 
@@ -85,8 +107,17 @@ impl LlmConfig {
             .or_else(|| std::env::var("CONTEXTMEM_LLM_BASE_URL").ok())
             .unwrap_or(default_url);
 
-        // For Anthropic, require an API key
-        // For OpenAI-compat (Ollama), API key is optional (local)
+        let local_model_path = file_cfg.llm.local_model_path
+            .or_else(|| std::env::var("CONTEXTMEM_LOCAL_MODEL_PATH").ok());
+        let local_tokenizer_path = file_cfg.llm.local_tokenizer_path
+            .or_else(|| std::env::var("CONTEXTMEM_LOCAL_TOKENIZER_PATH").ok());
+        let local_speed_threshold = file_cfg.llm.local_speed_threshold
+            .unwrap_or(15.0);
+
+        // For Anthropic-only, require an API key
+        // For Auto, API key is optional (will try local first)
+        // For Local, no API key needed
+        // For OpenAI-compat (Ollama), API key is optional
         if provider == Provider::Anthropic && api_key.is_none() {
             eprintln!(
                 "[claude-rlm] No LLM API key found. Set ANTHROPIC_API_KEY or run: claude-rlm config set api-key <key>"
@@ -99,6 +130,9 @@ impl LlmConfig {
             api_key,
             model,
             base_url,
+            local_model_path,
+            local_tokenizer_path,
+            local_speed_threshold,
         })
     }
 
@@ -107,6 +141,14 @@ impl LlmConfig {
         match self.provider {
             Provider::Anthropic => self.complete_anthropic(system, user_message),
             Provider::OpenAICompat => self.complete_openai(system, user_message),
+            #[cfg(feature = "local-inference")]
+            Provider::Local => self.do_complete_local(system, user_message),
+            #[cfg(feature = "local-inference")]
+            Provider::Auto => self.complete_auto(system, user_message),
+            #[cfg(not(feature = "local-inference"))]
+            Provider::Local | Provider::Auto => {
+                Err(anyhow!("Local inference not available. Rebuild with --features local-inference"))
+            }
         }
     }
 
@@ -202,6 +244,55 @@ impl LlmConfig {
             .next()
             .map(|c| c.message.content)
             .ok_or_else(|| anyhow!("No choices in OpenAI-compat response"))
+    }
+
+    /// Auto-detect: check cached benchmark, use local if fast enough, else API.
+    #[cfg(feature = "local-inference")]
+    fn complete_auto(&self, system: &str, user_message: &str) -> Result<String> {
+        let assessment = crate::compute::assess_compute(self.local_speed_threshold);
+
+        if assessment.use_local {
+            eprintln!(
+                "[claude-rlm] Auto: local inference ({:.1} tok/s)",
+                assessment.tokens_per_second.unwrap_or(0.0)
+            );
+            match self.do_complete_local(system, user_message) {
+                Ok(result) => return Ok(result),
+                Err(e) => {
+                    eprintln!("[claude-rlm] Local inference failed, falling back to API: {}", e);
+                }
+            }
+        } else {
+            eprintln!("[claude-rlm] Auto: using API ({})", assessment.reason);
+        }
+
+        // Fallback to Anthropic
+        if self.api_key.is_some() {
+            self.complete_anthropic(system, user_message)
+        } else {
+            Err(anyhow!(
+                "Local inference not viable ({}) and no API key configured",
+                assessment.reason
+            ))
+        }
+    }
+
+    /// Run inference using a local Candle model.
+    #[cfg(feature = "local-inference")]
+    fn do_complete_local(&self, system: &str, user_message: &str) -> Result<String> {
+        use std::path::PathBuf;
+
+        if let (Some(model_path), Some(tokenizer_path)) =
+            (&self.local_model_path, &self.local_tokenizer_path)
+        {
+            let mut model = crate::local_model::LocalModel::load(
+                &PathBuf::from(model_path),
+                &PathBuf::from(tokenizer_path),
+            )?;
+            model.complete(system, user_message, 2048)
+        } else {
+            crate::local_model::complete_local(system, user_message, 2048)
+        }
     }
 }
 
